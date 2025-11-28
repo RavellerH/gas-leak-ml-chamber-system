@@ -1,0 +1,34 @@
+Gas 31 (2) :
+{clusterId:31,networkId:15,targetId:10,mode:0,periode:45,toGatewayId:25,toNodeId:32,loraFreq:920}
+LoRaNodeID       : 31
+LoRa toNodeID    : 32
+LoRa toGatewayId : 25
+LoRa Frequency   : 920.00
+
+CH 25 :
+{"clusterId":25,"networkId":15,"toGatewayId":20,"toNodeId":31,"loraFreq":920}
+clusterId: 25
+networkId: 15
+toGatewayId (legacy): 20
+toNodeId (legacy): 31
+loraFreq: 920.00
+
+CH 20 :
+{"clusterId":20,"networkId":15,"toGatewayId":10,"toNodeId":25,"loraFreq":920}
+clusterId: 20
+networkId: 15
+toGatewayId (legacy): 10
+toNodeId (legacy): 25
+loraFreq: 920.00
+
+Gateway 10 (Process) :
+{"clusterId":10,"networkId":15,"toGatewayId":1,"toNodeId":20,"loraFreq":920,"ssid":"deviot","ssidPass":"123deviot","mqttAddress":"192.168.137.183","mqttUser":"deviot","mqttPass":"deviot","mqttPort":1883,"baseTopic":"Process"}
+LoRaNodeID       : 10
+LoRa toNodeID    : 20
+LoRa toGatewayId : 1
+LoRa Frequency   : 920.00
+SSID             : deviot
+MQTT Address     : 192.168.137.183
+MQTT User        : deviot
+MQTT Port        : 1883
+Base Topic       : Process

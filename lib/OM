@@ -1,0 +1,112 @@
+
+
+Gas 131 (1) :
+{clusterId:131,networkId:10,targetId:110,mode:0,periode:45,toGatewayId:125,toNodeId:132,loraFreq:921}
+LoRaNodeID       : 131
+LoRa toNodeID    : 132
+LoRa toGatewayId : 125
+LoRa Frequency   : 921.00
+
+CH 130 : 
+{"clusterId":130,"networkId":10,"toGatewayId":129,"toNodeId":131,"loraFreq":921.0}
+clusterId: 130
+networkId: 10
+toGatewayId (legacy): 129
+toNodeId (legacy): 131
+loraFreq: 921.00
+
+CH 129 : 
+{"clusterId":129,"networkId":10,"toGatewayId":128,"toNodeId":130,"loraFreq":921.0}
+clusterId: 129
+networkId: 10
+toGatewayId (legacy): 128
+toNodeId (legacy): 130
+loraFreq: 921.00
+
+CH 128 : 
+{"clusterId":128,"networkId":10,"toGatewayId":127,"toNodeId":129,"loraFreq":921.0}
+clusterId: 128
+networkId: 10
+toGatewayId (legacy): 127
+toNodeId (legacy): 129
+loraFreq: 921.00
+
+CH 127 : 
+{"clusterId":127,"networkId":10,"toGatewayId":126,"toNodeId":128,"loraFreq":921.0}
+clusterId: 127
+networkId: 10
+toGatewayId (legacy): 126
+toNodeId (legacy): 128
+loraFreq: 921.00
+
+CH 126 : 
+{"clusterId":126,"networkId":10,"toGatewayId":125,"toNodeId":127,"loraFreq":921.0}
+clusterId: 126
+networkId: 10
+toGatewayId (legacy): 125
+toNodeId (legacy): 127
+loraFreq: 921.00
+
+CH 125 : 
+{"clusterId":125,"networkId":10,"toGatewayId":124,"toNodeId":126,"loraFreq":921.0}
+clusterId: 125
+networkId: 10
+toGatewayId (legacy): 124
+toNodeId (legacy): 126
+loraFreq: 921.00
+
+CH 124 : 
+{"clusterId":124,"networkId":10,"toGatewayId":123,"toNodeId":125,"loraFreq":921.0}
+clusterId: 124
+networkId: 10
+toGatewayId (legacy): 123
+toNodeId (legacy): 125
+loraFreq: 921.00
+
+CH 123 : 
+{"clusterId":123,"networkId":10,"toGatewayId":122,"toNodeId":124,"loraFreq":921.0}
+clusterId: 123
+networkId: 10
+toGatewayId (legacy): 122
+toNodeId (legacy): 124
+loraFreq: 921.00
+
+CH 122 : 
+{"clusterId":122,"networkId":10,"toGatewayId":121,"toNodeId":123,"loraFreq":921.0}
+clusterId: 122
+networkId: 10
+toGatewayId (legacy): 121
+toNodeId (legacy): 123
+loraFreq: 921.00
+
+CH 121 : 
+{"clusterId":121,"networkId":10,"toGatewayId":120,"toNodeId":122,"loraFreq":921.0}
+
+
+CH 120 : 
+{"clusterId":120,"networkId":10,"toGatewayId":115,"toNodeId":121,"loraFreq":921.0}
+clusterId: 120
+networkId: 10
+toGatewayId (legacy): 115
+toNodeId (legacy): 121
+loraFreq: 921.00
+
+CH 115 : 
+{"clusterId":115,"networkId":10,"toGatewayId":110,"toNodeId":120,"loraFreq":921.0}
+clusterId: 115
+networkId: 10
+toGatewayId (legacy): 110
+toNodeId (legacy): 120
+loraFreq: 921.00
+
+Gateway 110 (OM) :
+{"clusterId":110,"networkId":10,"toGatewayId":1,"toNodeId":115,"loraFreq":921,"ssid":"TP-Link_5608","ssidPass":"54947023","mqttAddress":"192.168.0.103","mqttUser":"deviot","mqttPass":"deviot","mqttPort":1883,"baseTopic":"OM"}
+LoRaNodeID       : 110
+LoRa toNodeID    : 115
+LoRa toGatewayId : 1
+LoRa Frequency   : 921.00
+SSID             : TP-Link_5608
+MQTT Address     : 192.168.0.103
+MQTT User        : deviot
+MQTT Port        : 1883
+Base Topic       : OM

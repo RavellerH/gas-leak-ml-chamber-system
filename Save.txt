@@ -1,0 +1,77 @@
+Router
+TP-Link_5608
+54947023
+
+Gateway
+{"clusterId":10,"networkId":10,"toGatewayId":1,"toNodeId":20,"loraFreq":921,"ssid":"TP-Link_5608","ssidPass":"54947023","mqttAddress":"192.168.0.103","mqttUser":"deviot","mqttPass":"deviot","mqttPort":1883,"baseTopic":"pertamina"}
+
+Gas 131 (1) :
+{clusterId:131,networkId:10,targetId:110,mode:0,periode:45,toGatewayId:125,toNodeId:132,loraFreq:921}
+LoRaNodeID       : 131
+LoRa toNodeID    : 132
+LoRa toGatewayId : 125
+LoRa Frequency   : 921.00
+
+Gas 31 (2) :
+{clusterId:31,networkId:15,targetId:10,mode:0,periode:45,toGatewayId:25,toNodeId:32,loraFreq:920}
+LoRaNodeID       : 31
+LoRa toNodeID    : 32
+LoRa toGatewayId : 25
+LoRa Frequency   : 920.00
+
+CH 25 :
+{"clusterId":25,"networkId":15,"toGatewayId":20,"toNodeId":31,"loraFreq":920}
+clusterId: 25
+networkId: 15
+toGatewayId (legacy): 20
+toNodeId (legacy): 31
+loraFreq: 920.00
+
+CH 125 : 
+{"clusterId":125,"networkId":10,"toGatewayId":120,"toNodeId":131,"loraFreq":921.0}
+clusterId: 125
+networkId: 10
+toGatewayId (legacy): 120
+toNodeId (legacy): 131
+loraFreq: 921.00
+
+CH 20 :
+{"clusterId":20,"networkId":15,"toGatewayId":10,"toNodeId":25,"loraFreq":920}
+clusterId: 20
+networkId: 15
+toGatewayId (legacy): 10
+toNodeId (legacy): 25
+loraFreq: 920.00
+
+CH 120 : 
+{"clusterId":120,"networkId":10,"toGatewayId":110,"toNodeId":125,"loraFreq":921.0}
+clusterId: 120
+networkId: 10
+toGatewayId (legacy): 110
+toNodeId (legacy): 125
+loraFreq: 921.00
+
+
+Gateway 10 (Process) :
+{"clusterId":10,"networkId":15,"toGatewayId":1,"toNodeId":20,"loraFreq":920,"ssid":"deviot","ssidPass":"123deviot","mqttAddress":"192.168.137.183","mqttUser":"deviot","mqttPass":"deviot","mqttPort":1883,"baseTopic":"Process"}
+LoRaNodeID       : 10
+LoRa toNodeID    : 20
+LoRa toGatewayId : 1
+LoRa Frequency   : 920.00
+SSID             : deviot
+MQTT Address     : 192.168.137.183
+MQTT User        : deviot
+MQTT Port        : 1883
+Base Topic       : Process
+
+Gateway 110 (OM) :
+{"clusterId":110,"networkId":10,"toGatewayId":1,"toNodeId":120,"loraFreq":921,"ssid":"deviot","ssidPass":"123deviot","mqttAddress":"192.168.137.183","mqttUser":"deviot","mqttPass":"deviot","mqttPort":1883,"baseTopic":"OM"}
+LoRaNodeID       : 110
+LoRa toNodeID    : 120
+LoRa toGatewayId : 1
+LoRa Frequency   : 921.00
+SSID             : deviot
+MQTT Address     : 192.168.137.183
+MQTT User        : deviot
+MQTT Port        : 1883
+Base Topic       : OM
