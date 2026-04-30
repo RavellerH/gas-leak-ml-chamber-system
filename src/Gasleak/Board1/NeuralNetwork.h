@@ -14,6 +14,17 @@ namespace tflite
 
 struct TfLiteTensor;
 
+struct GasLeakPrediction
+{
+    int gas_type;
+    float gas_confidence;
+    bool leak_present;
+    float leak_probability;
+    int severity;
+    float severity_confidence;
+    float ppm_estimate;
+};
+
 class NeuralNetwork
 {
 private:
@@ -22,21 +33,20 @@ private:
     const tflite::Model *model;
     tflite::MicroInterpreter *interpreter;
     TfLiteTensor *input;
-    TfLiteTensor *output;
+    TfLiteTensor *gasOutput;
+    TfLiteTensor *leakOutput;
+    TfLiteTensor *severityOutput;
+    TfLiteTensor *ppmOutput;
     uint8_t *tensor_arena;
 
-    int outputSize;
     bool initialized;
 
 public:
     NeuralNetwork();
     ~NeuralNetwork();
     float *getInputBuffer();
-    // Modified: predict now takes a float reference to return the confidence score
-    int predict(float &confidence_score); // <--- MODIFIED LINE
-    int getOutputSize();
+    bool predict(GasLeakPrediction &prediction);
     bool isInitialized();
-    float *getOutputBuffer(); // Still useful if you want all scores later
 };
 
 #endif

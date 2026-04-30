@@ -49,6 +49,12 @@
 #define EEPROM_SIZE 512
 #define AUTO_TRANSMIT 1
 #define LORA_TRANSMIT_TIMER 2500
+#ifndef GASLEAK_LED_PIN
+#define GASLEAK_LED_PIN -1
+#endif
+#ifndef GASLEAK_BUZZER_PIN
+#define GASLEAK_BUZZER_PIN -1
+#endif
 #define DEBUG_print(x) \
   if (debugEnabled) Serial.print(x)
 #define DEBUG_println(x) \
@@ -145,6 +151,11 @@ uint16_t wiperArr[8] = { 1, 1, 1, 1, 1, 1, 1, 1 };
 float scaled_sensor_data[8];
 int predicted_class = -1;
 float highest_confidence_score = 0.0f;
+bool predicted_leak_present = false;
+float leak_probability = 0.0f;
+int predicted_severity = 0;
+float severity_confidence = 0.0f;
+float estimated_ppm = 0.0f;
 unsigned long start_time = 0, end_time = 0, inference_time = 0;
 bool needCalibration = false;
 // WiFi & MQTT
@@ -220,6 +231,7 @@ void i2cScanner();
 void StartADS();
 void StartLoRa();
 void sendNextLoRaMessage();
+void setAlarmOutputs(bool active);
 // #endregion
 uint8_t serializeMessage(struct_message* msg, uint8_t* buffer, int bufferSize) {
   int totalLen = 1 + sizeof(msg->sourceId) + sizeof(msg->targetId) + sizeof(msg->networkId) +
@@ -586,13 +598,29 @@ void prepareDataToSend() {
   outgoingData.networkId = id.networkId;
   outgoingData.direction = TO_GATEWAY;
 
-  CayenneLPP lpp(MAX_PAYLOAD_SIZE);
-  lpp.reset();
-  lpp.addPresence(1, predicted_class);
-  lpp.addGenericSensor(2, highest_confidence_score * 100);
-  lpp.addPresence(3, inference_time);
-  outgoingData.messageSize = lpp.getSize();
-  memcpy(outgoingData.message, lpp.getBuffer(), lpp.getSize());
+  uint8_t offset = 0;
+  uint16_t gasConfidence = (uint16_t)constrain((int)round(highest_confidence_score * 1000.0f), 0, 1000);
+  uint16_t leakConfidence = (uint16_t)constrain((int)round(leak_probability * 1000.0f), 0, 1000);
+  uint16_t sevConfidence = (uint16_t)constrain((int)round(severity_confidence * 1000.0f), 0, 1000);
+  uint16_t ppmValue = (uint16_t)constrain((int)round(estimated_ppm), 0, 65535);
+  uint32_t inferenceMicros = (uint32_t)inference_time;
+
+  outgoingData.message[offset++] = 1; // payload version
+  outgoingData.message[offset++] = (uint8_t)predicted_class; // 0 normal, 1 methane, 2 LPG
+  outgoingData.message[offset++] = predicted_leak_present ? 1 : 0;
+  outgoingData.message[offset++] = (uint8_t)predicted_severity; // 0 normal, 1 low, 2 medium, 3 high
+  memcpy(&outgoingData.message[offset], &gasConfidence, sizeof(gasConfidence)); offset += sizeof(gasConfidence);
+  memcpy(&outgoingData.message[offset], &leakConfidence, sizeof(leakConfidence)); offset += sizeof(leakConfidence);
+  memcpy(&outgoingData.message[offset], &sevConfidence, sizeof(sevConfidence)); offset += sizeof(sevConfidence);
+  memcpy(&outgoingData.message[offset], &ppmValue, sizeof(ppmValue)); offset += sizeof(ppmValue);
+  memcpy(&outgoingData.message[offset], &inferenceMicros, sizeof(inferenceMicros)); offset += sizeof(inferenceMicros);
+
+  for (uint8_t i = 0; i < 8; i++) {
+    int16_t millivolts = (int16_t)constrain((int)round(voltValues[i] * 1000.0f), -32768, 32767);
+    memcpy(&outgoingData.message[offset], &millivolts, sizeof(millivolts));
+    offset += sizeof(millivolts);
+  }
+  outgoingData.messageSize = offset;
 
   DEBUG_print("ESP-NOW TX Data: src=");
   DEBUG_print(outgoingData.sourceId);
@@ -1156,21 +1184,49 @@ void machineLearning()
 
   if (model_input_buffer != nullptr)
   {
+    GasLeakPrediction prediction;
     start_time = micros();
-    predicted_class = network->predict(highest_confidence_score);
+    bool ok = network->predict(prediction);
     end_time = micros();
     inference_time = end_time - start_time;
+    if (!ok) {
+      DEBUG_println("Model prediction failed.");
+      return;
+    }
+
+    predicted_class = prediction.gas_type;
+    highest_confidence_score = prediction.gas_confidence;
+    predicted_leak_present = prediction.leak_present;
+    leak_probability = prediction.leak_probability;
+    predicted_severity = prediction.severity;
+    severity_confidence = prediction.severity_confidence;
+    estimated_ppm = prediction.ppm_estimate;
 
     DEBUG_printf("Predicted class index : %d\n", predicted_class); //jika bukan no Gas
     DEBUG_printf("Confidence score : %.2f\n", highest_confidence_score); //jika di atas 80%
+    DEBUG_printf("Leak probability : %.2f\n", leak_probability);
+    DEBUG_printf("Severity index : %d\n", predicted_severity);
+    DEBUG_printf("Estimated ppm proxy : %.1f\n", estimated_ppm);
     DEBUG_printf("Inference time : %d\n", inference_time);
 
     if (predicted_class != 0 && highest_confidence_score >= 0.80) {
       id.mode = AUTO_TRANSMIT; // set mode ke auto transmit
+      setAlarmOutputs(true);
     }
     else {
       id.mode = !AUTO_TRANSMIT; // set mode ke manual transmit
+      setAlarmOutputs(false);
     }
+  }
+}
+
+void setAlarmOutputs(bool active)
+{
+  if (GASLEAK_LED_PIN >= 0) {
+    digitalWrite(GASLEAK_LED_PIN, active ? HIGH : LOW);
+  }
+  if (GASLEAK_BUZZER_PIN >= 0) {
+    digitalWrite(GASLEAK_BUZZER_PIN, active ? HIGH : LOW);
   }
 }
 
@@ -1352,6 +1408,14 @@ void setup()
 {
   delay(5000);
   Serial.begin(115200);
+  if (GASLEAK_LED_PIN >= 0) {
+    pinMode(GASLEAK_LED_PIN, OUTPUT);
+    digitalWrite(GASLEAK_LED_PIN, LOW);
+  }
+  if (GASLEAK_BUZZER_PIN >= 0) {
+    pinMode(GASLEAK_BUZZER_PIN, OUTPUT);
+    digitalWrite(GASLEAK_BUZZER_PIN, LOW);
+  }
 
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();

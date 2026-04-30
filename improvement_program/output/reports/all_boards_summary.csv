@@ -1,0 +1,2 @@
+board,samples,gas_type_accuracy,leak_present_accuracy,severity_accuracy,ppm_proxy_mae,model_size_bytes
+Board1,439,0.5227272727272727,0.6590909090909091,0.20454545454545456,321.0173284729221,8420

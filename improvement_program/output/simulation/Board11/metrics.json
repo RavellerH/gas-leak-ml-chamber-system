@@ -1,0 +1,12 @@
+{
+  "board": "Board11",
+  "samples": 300,
+  "test_samples": 75,
+  "gas_type_accuracy": 1.0,
+  "leak_present_accuracy": 1.0,
+  "severity_accuracy": 0.9866666666666667,
+  "ppm_proxy_mae": 0.20417564499825253,
+  "simulated_inference_time_us_per_sample": 903,
+  "payload_size_bytes": 30,
+  "ppm_note": "ppm_estimate is a response proxy because calibrated ppm labels are not present in the datasets."
+}

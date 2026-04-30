@@ -1,0 +1,11 @@
+version,gas_type,gas_name,leak_present,severity,severity_name,gas_confidence,leak_probability,severity_confidence,ppm_estimate,inference_time_us,voltages,payload_size,source_board,actual_gas_type,actual_gas_name,actual_severity,actual_severity_name
+1,0,normal,0,0,normal,0.958,0.05,0.958,0,569,"[0.002, 0.006, 0.002, 0.006, 0.007, 0.041, 0.003, 0.004]",32,Board1,0,normal,0,normal
+1,3,butane,1,3,high,1.0,1.0,1.0,990,569,"[2.133, 1.885, 0.848, 1.878, 2.013, 0.617, 0.004, 2.032]",32,Board1,3,butane,3,high
+1,0,normal,0,0,normal,1.0,0.0,1.0,0,569,"[0.002, 0.002, 0.003, 0.005, 0.004, 0.028, 0.003, 0.002]",32,Board1,0,normal,0,normal
+1,1,methane,1,1,low,1.0,1.0,1.0,27,569,"[0.293, 0.058, 0.003, 0.005, 0.45, 0.076, 0.003, 0.007]",32,Board1,1,methane,1,low
+1,3,butane,1,3,high,1.0,1.0,0.917,967,569,"[2.121, 1.876, 0.822, 1.892, 2.003, 0.748, 0.006, 2.048]",32,Board1,3,butane,3,high
+1,1,methane,1,1,low,1.0,1.0,1.0,14,569,"[0.148, 0.022, 0.003, 0.007, 0.319, 0.061, 0.004, 0.006]",32,Board1,1,methane,1,low
+1,3,butane,1,2,medium,1.0,1.0,0.575,959,569,"[2.124, 1.604, 0.817, 1.912, 1.97, 0.47, 0.006, 1.864]",32,Board1,3,butane,2,medium
+1,0,normal,0,0,normal,1.0,0.0,1.0,0,569,"[0.002, 0.003, 0.003, 0.005, 0.007, 0.039, 0.003, 0.002]",32,Board1,0,normal,0,normal
+1,3,butane,1,2,medium,1.0,1.0,0.867,957,569,"[2.124, 1.579, 0.814, 1.912, 1.97, 0.47, 0.006, 1.857]",32,Board1,3,butane,2,medium
+1,1,methane,1,1,low,1.0,1.0,1.0,10,569,"[0.108, 0.014, 0.003, 0.005, 0.265, 0.06, 0.005, 0.003]",32,Board1,1,methane,1,low

@@ -1,0 +1,2 @@
+board,samples,test_samples,gas_type_accuracy,leak_present_accuracy,severity_accuracy,ppm_proxy_mae,simulated_inference_time_us_per_sample,payload_size_bytes,ppm_note
+Board1,439,110,1.0,1.0,0.9818181818181818,1.3374730533717132,569,32,ppm_estimate is a response proxy because calibrated ppm labels are not present in the datasets.

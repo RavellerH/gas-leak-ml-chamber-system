@@ -1,0 +1,11 @@
+[
+  {
+    "board": "Board1",
+    "samples": 439,
+    "gas_type_accuracy": 0.19318181818181818,
+    "leak_present_accuracy": 0.6590909090909091,
+    "severity_accuracy": 0.14772727272727273,
+    "ppm_proxy_mae": 320.96034677444976,
+    "model_size_bytes": 8576
+  }
+]
