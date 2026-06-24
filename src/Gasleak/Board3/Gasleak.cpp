@@ -38,6 +38,9 @@
 #define intervalMQTT 500
 #define intervalLoRa 100
 #define intervalMachineLearning 200
+#define intervalDatasetLog 500
+#define ENABLE_LORA_STARTUP 1
+#define ENABLE_ADS_STARTUP 1
 #define LORA_RST 38
 #define LORA_DIO1 1
 #define LORA_BUSY 39
@@ -73,7 +76,7 @@
 #define PIN_CS_LORA   10
 
 const int PIN_DRDY = 17;
-const int PIN_RESET = 0;
+const int PIN_RESET = 0; // ADS1256 library treats 0 as "no reset pin"; do not drive GPIO0 manually.
 const int PIN_SYNC = 15;
 const int I2C_SDA_PIN = 8;
 const int I2C_SCL_PIN = 9;
@@ -125,6 +128,7 @@ long lastTransmitTime = 0;
 long millisMQTT = 0;
 long millisTakeData = 0;
 long millisMachineLearning = 0;
+long millisDatasetLog = 0;
 const unsigned long timeoutTimer = 60UL * 60UL * 1000UL;
 
 long adcValues[8];
@@ -147,6 +151,10 @@ int predicted_class = -1;
 float highest_confidence_score = 0.0f;
 unsigned long start_time = 0, end_time = 0, inference_time = 0;
 bool needCalibration = false;
+bool datasetLogging = false;
+String datasetLabel = "unlabeled";
+bool tcaDetected = false;
+bool adsDetected = false;
 // WiFi & MQTT
 const char* WIFI_SSID = "TP-Link_5608";
 const char* WIFI_PASS = "54947023";
@@ -198,7 +206,7 @@ void callback(char* topic, byte* payload, unsigned int length);
 void takeDataMQ(uint8_t ch);
 void setWiperFromWiperArray(uint8_t ch);
 void forwardLoRa(struct_message data);
-void checkADS1256();
+bool checkADS1256();
 void prepareDataToSend();
 void saveConfigToEEPROM();
 bool loadConfigFromEEPROM();
@@ -215,6 +223,8 @@ void modeSetupCalibration();
 void reconnectMQTT();
 void publishToMQTT();
 void publishToMQTTMachineLearning();
+void printDatasetHeader();
+void printDatasetRow();
 void IRAM_ATTR LoRaInterruptHandler();
 void i2cScanner();
 void StartADS();
@@ -302,6 +312,9 @@ void i2cScanner() {
     Serial.println("Pencarian selesai.");
 }
 void gainCalibrate(uint8_t channel) {
+  if (!adsDetected)
+    return;
+
   A.setMUX(SING_0 + (channel * 16));
   long raw = A.readSingle();
   float absVolt = abs(A.convertToVoltage(raw));
@@ -329,7 +342,7 @@ uint16_t max_uint16(uint16_t a, uint16_t b) {
 uint16_t min_uint16(uint16_t a, uint16_t b) {
   return (a < b) ? a : b;
 }
-void checkADS1256()
+bool checkADS1256()
 {
   uint8_t id = A.readRegister(0x00);
   Serial.print("ADS1256 ID: 0x");
@@ -339,11 +352,11 @@ void checkADS1256()
   if (id != 0x03 && id != 0x36)
   { // jika 0x36, itu versi lain dari ADS1256
     Serial.println("❌ ADS1256 not detected! Check connections.");
-    // while (1)
-    //   delay(1000);
+    return false;
   }
 
   Serial.println("✅ ADS1256 detected.");
+  return true;
 }String macToStr(const uint8_t* mac)
 {
   char macStr[18];
@@ -491,6 +504,29 @@ bool checkSerialConfigCommand()
           debugEnabled = false;
           DEBUG_println("Debugging disabled");
         }
+        else if (inputString.equalsIgnoreCase("CSV_ON"))
+        {
+          datasetLogging = true;
+          debugEnabled = false;
+          printDatasetHeader();
+        }
+        else if (inputString.equalsIgnoreCase("CSV_OFF"))
+        {
+          datasetLogging = false;
+          Serial.println("CSV logging disabled");
+        }
+        else if (inputString.startsWith("LABEL="))
+        {
+          datasetLabel = inputString.substring(6);
+          datasetLabel.trim();
+          datasetLabel.replace(",", "_");
+          if (datasetLabel.length() == 0)
+          {
+            datasetLabel = "unlabeled";
+          }
+          Serial.print("Dataset label set to ");
+          Serial.println(datasetLabel);
+        }
         else if (inputString.equalsIgnoreCase("RUNNING"))
         {
           if (currentMode == 0)
@@ -538,7 +574,7 @@ bool checkSerialConfigCommand()
         }
         else
         {
-          DEBUG_println("Invalid command. Send JSON, or type 'show', 'reset', 'DEBUG_ON', 'DEBUG_OFF', 'RUNNING', 'TRAINING'.");
+          DEBUG_println("Invalid command. Send JSON, or type 'show', 'reset', 'DEBUG_ON', 'DEBUG_OFF', 'CSV_ON', 'CSV_OFF', 'LABEL=<name>', 'RUNNING', 'TRAINING'.");
         }
         inputString = "";
       }
@@ -767,8 +803,37 @@ void publishToMQTT()
     DEBUG_println("MQTT not connected");
   }
 }
+void printDatasetHeader()
+{
+  Serial.println("timestamp_ms,board_id,label,MQ135V,MQ2V,MQ3V,MQ4V,MQ7V,MQ5V,MQ6V,MQ8V,predicted_class,confidence_score,inference_time_us");
+}
+void printDatasetRow()
+{
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(id.clusterId);
+  Serial.print(",");
+  Serial.print(datasetLabel);
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    Serial.print(",");
+    Serial.print(voltValues[i], 6);
+  }
+  Serial.print(",");
+  Serial.print(predicted_class);
+  Serial.print(",");
+  Serial.print(highest_confidence_score, 4);
+  Serial.print(",");
+  Serial.println(inference_time);
+}
 void preheatSensorDelta(float threshold_mV)
 { // 5
+  if (!adsDetected)
+  {
+    DEBUG_println("Preheat skipped: ADS1256 not detected.");
+    return;
+  }
+
   DEBUG_println("Memulai pemanasan sensor (menunggu delta < 10mV semua channel)...");
 
   // Tunggu hingga semua channel memiliki delta di bawah threshold
@@ -805,8 +870,17 @@ void preheatSensorDelta(float threshold_mV)
 }
 void setAllWiper(uint16_t wiperValue)
 {
+  if (!tcaDetected)
+  {
+    DEBUG_println("Set all wipers skipped: TCA9548 not detected.");
+    return;
+  }
+
   for (uint8_t ch = 0; ch < 8; ch++)
   {
+    if (!tcaDetected)
+      break;
+
     mux.selectChannel(ch);
     dac.begin();dac.setValue(wiperValue);
     DEBUG_printf("[DEBUG] Potensiometer Channel %d di-set ke %d.\n", ch + 1, wiperValue);
@@ -917,6 +991,13 @@ String readAllChannels(bool debugPrint, bool readMQ)
 {
   if (readMQ)
   {
+    if (!adsDetected)
+    {
+      if (debugPrint)
+        return "ADS1256 not detected; MQ read skipped.";
+      return "";
+    }
+
     for (uint8_t chs = 0; chs < 8; chs++)
     {
       A.setMUX(SING_0 + (chs * 16)); //jika SING_0 dalam decimal adalah 15
@@ -959,6 +1040,12 @@ String readAllChannels(bool debugPrint, bool readMQ)
 }
 
 uint16_t binarySearchVisual(uint16_t low, uint16_t high) {
+  if (!tcaDetected || !adsDetected)
+  {
+    Serial.println("Calibration skipped: TCA9548 or ADS1256 not detected.");
+    return false;
+  }
+
   for (size_t i = 0; i < 8; i++)
   {
     mux.selectChannel(i);
@@ -1102,6 +1189,12 @@ uint16_t binarySearchVisual(uint16_t low, uint16_t high) {
 }
 void setWiperFromWiperArray(uint8_t ch)
 {
+  if (!tcaDetected)
+  {
+    DEBUG_printf("Channel %d wiper skipped: TCA9548 not detected.\n", ch + 1);
+    return;
+  }
+
   mux.selectChannel(ch);
   dac.begin();dac.setValue(wiperArr[ch]);
   // DEBUG_printf("Channel %d = wiper %3d \n", ch + 1, wiperArr[ch]);
@@ -1109,6 +1202,9 @@ void setWiperFromWiperArray(uint8_t ch)
 }
 void takeDataMQ(uint8_t ch)
 {
+  if (!adsDetected)
+    return;
+
   A.setMUX(SING_0 + (ch * 16)); //SING0 itu 1111 channel 0.. jika channel 1 maka SING_0 + 15
   A.readSingle(); // buang bacaan pertama
   long defaultRaw = A.readSingle();
@@ -1137,6 +1233,17 @@ void takeDataMQ(uint8_t ch)
 }
 void machineLearning()
 {
+  if (!adsDetected)
+  {
+    static unsigned long lastMlSkipLog = 0;
+    if (millis() - lastMlSkipLog >= 5000)
+    {
+      lastMlSkipLog = millis();
+      DEBUG_println("ML skipped: ADS1256 not detected.");
+    }
+    return;
+  }
+
   if (!network->isInitialized())
   {
     DEBUG_println("ERROR: Neural Network failed to initialize. Halting.");
@@ -1178,18 +1285,20 @@ void StartADS() {
   SPI_ADS.begin(PIN_SCK_ADS, PIN_MISO_ADS, PIN_MOSI_ADS, PIN_CS_ADS); // SCK 18, MISO 6, MOSI 7, CS 16
   // SPI.begin(PIN_SCK_ADS, PIN_MISO_ADS, PIN_MOSI_ADS, PIN_CS_ADS); // SCK 18, MISO 6, MOSI 7, CS 16
   pinMode(PIN_DRDY, INPUT);
-  pinMode(PIN_RESET, OUTPUT);
   pinMode(PIN_SYNC, OUTPUT);
   pinMode(PIN_CS_ADS, OUTPUT);
   digitalWrite(PIN_CS_ADS, HIGH);
+  digitalWrite(PIN_SYNC, HIGH);
 
-  // Manual reset ADS1256
-  digitalWrite(PIN_RESET, LOW);
-  delay(100);
-  digitalWrite(PIN_RESET, HIGH);
-  delay(100);
+  // Do not manually drive PIN_RESET when it is GPIO0. GPIO0 is a boot strap pin.
+  // The ADS1256 library skips hardware reset when RESET pin is 0.
   A.InitializeADC();
-  checkADS1256();
+  adsDetected = checkADS1256();
+  if (!adsDetected)
+  {
+    DEBUG_printlnF("ADS1256 SPI mode not started.");
+    return;
+  }
   // Set penguatan & data rate
   A.setPGA(PGA_SETTING);
   A.setDRATE(DRATE_SETTING);
@@ -1226,6 +1335,11 @@ void modeRunning()
       // DEBUG_println(readAllChannels(true, false));
       ch++;
       ch = ch % 8;
+      if (datasetLogging && ch == 0 && millis() - millisDatasetLog > intervalDatasetLog)
+      {
+        millisDatasetLog = millis();
+        printDatasetRow();
+      }
     }
   }
   if (millis() - lastTransmitTime > 1000) {
@@ -1271,6 +1385,11 @@ void modeTraining()
     {
       ch = 0;
       DEBUG_println();
+      if (datasetLogging && millis() - millisDatasetLog > intervalDatasetLog)
+      {
+        millisDatasetLog = millis();
+        printDatasetRow();
+      }
     }
   }
   if (millis() - millisMQTT > intervalMQTT)
@@ -1359,11 +1478,10 @@ void setup()
   network = new NeuralNetwork();
 
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
-  if (!mux.begin())
+  tcaDetected = mux.begin();
+  if (!tcaDetected)
   {
     Serial.println("❌ TCA9548 not detected! Check connections.");
-    // while (1)
-    //   delay(1000);
   }
   else {
     Serial.println("✅ TCA9548 detected.");
@@ -1417,8 +1535,23 @@ void setup()
   }
   DEBUG_println("Wiper di-set dari EEPROM.");
 
-  StartLoRa();
-  StartADS();
+  if (ENABLE_LORA_STARTUP)
+  {
+    StartLoRa();
+  }
+  else
+  {
+    DEBUG_println("LoRa startup skipped by firmware switch.");
+  }
+
+  if (ENABLE_ADS_STARTUP)
+  {
+    StartADS();
+  }
+  else
+  {
+    DEBUG_println("ADS startup skipped by firmware switch.");
+  }
   DEBUG_println("Setup awal selesai.");
   delay(5000);
 }

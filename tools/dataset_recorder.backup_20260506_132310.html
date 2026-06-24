@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gas Sensor Recorder</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #d8e0ea;
+      --accent: #0f766e;
+      --danger: #b42318;
+      --ok: #177245;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      width: min(1200px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 16px 0 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+
+    .dot.connected {
+      background: var(--ok);
+    }
+
+    .toolbar,
+    .graph,
+    .table-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: 130px 160px repeat(7, minmax(88px, auto));
+      gap: 8px;
+      align-items: end;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    input,
+    select,
+    button {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      padding: 8px 10px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    button.danger {
+      color: var(--danger);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-height: 38px;
+      background: #fbfdff;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--ink);
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .graph {
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(62vh, 560px);
+      min-height: 360px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(82px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .legend label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    .legend input {
+      width: auto;
+      min-height: auto;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 4px;
+      border-radius: 999px;
+    }
+
+    .table-panel {
+      overflow: hidden;
+    }
+
+    .table-wrap {
+      max-height: 240px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 7px 9px;
+      border-bottom: 1px solid #edf1f6;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: var(--muted);
+      z-index: 1;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    .log {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+
+    @media (max-width: 980px) {
+      header {
+        display: block;
+      }
+
+      .status {
+        margin-top: 8px;
+      }
+
+      .toolbar {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .legend {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Gas Sensor Recorder</h1>
+      <div class="status">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </header>
+
+    <section class="toolbar">
+      <div>
+        <label for="baudRate">Baud</label>
+        <select id="baudRate">
+          <option value="115200" selected>115200</option>
+          <option value="57600">57600</option>
+          <option value="9600">9600</option>
+        </select>
+      </div>
+      <div>
+        <label for="boardName">Board</label>
+        <input id="boardName" value="Board12" autocomplete="off">
+      </div>
+      <button id="connectBtn" class="primary">Connect</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+      <button id="startBtn" disabled>Record</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="excelBtn" disabled>Excel</button>
+      <button id="csvBtn" disabled>CSV</button>
+      <button id="clearBtn" class="danger" disabled>Clear</button>
+      <div class="metric">Rows<strong id="rowCount">0</strong></div>
+      <div class="metric">Rate<strong id="rateValue">0/s</strong></div>
+    </section>
+
+    <section class="graph">
+      <canvas id="chart"></canvas>
+      <div id="legend" class="legend"></div>
+      <div id="log" class="log"></div>
+      <div id="lastLine" class="log"></div>
+    </section>
+
+    <section class="table-panel">
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const SENSOR_COLUMNS = ["MQ135V", "MQ2V", "MQ3V", "MQ4V", "MQ7V", "MQ5V", "MQ6V", "MQ8V"];
+    const CALIBRATION_CHANNEL_TO_SENSOR = {
+      0: "MQ8V",
+      1: "MQ135V",
+      2: "MQ3V",
+      3: "MQ5V",
+      4: "MQ4V",
+      5: "MQ7V",
+      6: "MQ6V",
+      7: "MQ2V"
+    };
+    const COLUMNS = ["sample_id", "recorded_at", "elapsed_ms", "board_name", "board_id", ...SENSOR_COLUMNS];
+    const FIRMWARE_HEADER = "timestamp_ms,board_id,label,MQ135V,MQ2V,MQ3V,MQ4V,MQ7V,MQ5V,MQ6V,MQ8V,predicted_class,confidence_score,inference_time_us";
+    const COLORS = ["#0f766e", "#b42318", "#2563eb", "#a15c07", "#6d28d9", "#177245", "#be185d", "#475569"];
+
+    const state = {
+      port: null,
+      reader: null,
+      writer: null,
+      reading: false,
+      recording: false,
+      buffer: "",
+      rows: [],
+      previewRows: [],
+      latestPreview: Object.fromEntries(SENSOR_COLUMNS.map((name) => [name, null])),
+      pendingAdc: {},
+      visible: Object.fromEntries(SENSOR_COLUMNS.map((name) => [name, true])),
+      startedAt: 0,
+      rateStartedAt: 0,
+      rateRows: 0
+    };
+
+    const els = {
+      baudRate: document.getElementById("baudRate"),
+      boardName: document.getElementById("boardName"),
+      connectBtn: document.getElementById("connectBtn"),
+      disconnectBtn: document.getElementById("disconnectBtn"),
+      startBtn: document.getElementById("startBtn"),
+      stopBtn: document.getElementById("stopBtn"),
+      excelBtn: document.getElementById("excelBtn"),
+      csvBtn: document.getElementById("csvBtn"),
+      clearBtn: document.getElementById("clearBtn"),
+      rowCount: document.getElementById("rowCount"),
+      rateValue: document.getElementById("rateValue"),
+      statusDot: document.getElementById("statusDot"),
+      statusText: document.getElementById("statusText"),
+      chart: document.getElementById("chart"),
+      legend: document.getElementById("legend"),
+      tableHead: document.getElementById("tableHead"),
+      tableBody: document.getElementById("tableBody"),
+      log: document.getElementById("log"),
+      lastLine: document.getElementById("lastLine")
+    };
+
+    function setStatus(connected) {
+      els.statusDot.classList.toggle("connected", connected);
+      els.statusText.textContent = connected ? "Connected" : "Disconnected";
+      els.connectBtn.disabled = connected;
+      els.disconnectBtn.disabled = !connected;
+      els.startBtn.disabled = !connected;
+      els.stopBtn.disabled = !connected;
+    }
+
+    function log(message) {
+      els.log.textContent = message;
+    }
+
+    function boardId() {
+      return els.boardName.value.replace(/\D/g, "") || "0";
+    }
+
+    function csvEscape(value) {
+      const text = value == null ? "" : String(value);
+      return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    }
+
+    function download(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function parseCsvLine(line) {
+      const cells = [];
+      let current = "";
+      let quoted = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"' && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else if (ch === '"') {
+          quoted = !quoted;
+        } else if (ch === "," && !quoted) {
+          cells.push(current.trim());
+          current = "";
+        } else {
+          current += ch;
+        }
+      }
+      cells.push(current.trim());
+      return cells;
+    }
+
+    function parseSensorLine(line) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === FIRMWARE_HEADER) return null;
+      const cells = parseCsvLine(trimmed);
+      const start = Number.isFinite(Number(cells[0])) ? 3 : 2;
+      const values = SENSOR_COLUMNS.map((_, index) => Number(cells[start + index]));
+      if (values.some((value) => !Number.isFinite(value))) return null;
+
+      const now = Date.now();
+      if (!state.startedAt) state.startedAt = now;
+      const row = {
+        sample_id: state.rows.length + 1,
+        recorded_at: new Date(now).toISOString(),
+        elapsed_ms: now - state.startedAt,
+        board_name: els.boardName.value.trim() || "Board",
+        board_id: cells[1] || boardId()
+      };
+      SENSOR_COLUMNS.forEach((name, index) => {
+        row[name] = values[index];
+      });
+      return row;
+    }
+
+    function parseCalibrationLine(line) {
+      const match = line.match(/\[CH(\d+)\].*?(?:->|VOLT=|BASELINE )\s*(-?\d+(?:\.\d+)?)\s*V?/i);
+      if (!match) return null;
+      const sensor = CALIBRATION_CHANNEL_TO_SENSOR[Number(match[1])];
+      const value = Number(match[2]);
+      if (!sensor || !Number.isFinite(value)) return null;
+      state.latestPreview[sensor] = value;
+      if (Object.values(state.latestPreview).every((item) => item !== null)) {
+        const now = Date.now();
+        const row = {
+          sample_id: state.previewRows.length + 1,
+          recorded_at: new Date(now).toISOString(),
+          elapsed_ms: state.startedAt ? now - state.startedAt : 0,
+          board_name: els.boardName.value.trim() || "Board",
+          board_id: boardId()
+        };
+        SENSOR_COLUMNS.forEach((name) => {
+          row[name] = state.latestPreview[name];
+        });
+        return row;
+      }
+      return null;
+    }
+
+    function parseAdcLine(line) {
+      const match = line.match(/^\[ADC CH(\d+)\]\s+[-\d]+\s+\|\s+(-?\d+(?:\.\d+)?)\s+V/i);
+      if (!match) return null;
+      const sensor = CALIBRATION_CHANNEL_TO_SENSOR[Number(match[1])];
+      const value = Number(match[2]);
+      if (!sensor || !Number.isFinite(value)) return null;
+
+      state.pendingAdc[sensor] = value;
+      if (!SENSOR_COLUMNS.every((name) => Object.prototype.hasOwnProperty.call(state.pendingAdc, name))) {
+        return null;
+      }
+
+      const now = Date.now();
+      if (!state.startedAt) state.startedAt = now;
+      const row = {
+        sample_id: state.rows.length + state.previewRows.length + 1,
+        recorded_at: new Date(now).toISOString(),
+        elapsed_ms: now - state.startedAt,
+        board_name: els.boardName.value.trim() || "Board",
+        board_id: boardId()
+      };
+      SENSOR_COLUMNS.forEach((name) => {
+        row[name] = state.pendingAdc[name];
+      });
+      state.pendingAdc = {};
+      return row;
+    }
+
+    function addRow(row) {
+      state.rows.push(row);
+      state.rateRows++;
+      updateMetrics();
+      updateTable();
+      drawChart();
+      updateExportButtons();
+    }
+
+    function addPreviewRow(row) {
+      state.previewRows.push(row);
+      if (state.previewRows.length > 700) state.previewRows.shift();
+      drawChart();
+    }
+
+    function updateMetrics() {
+      const now = Date.now();
+      if (!state.rateStartedAt) state.rateStartedAt = now;
+      const elapsed = Math.max(1, (now - state.rateStartedAt) / 1000);
+      if (elapsed > 5) {
+        state.rateStartedAt = now;
+        state.rateRows = 0;
+      }
+      els.rowCount.textContent = String(state.rows.length);
+      els.rateValue.textContent = `${(state.rateRows / elapsed).toFixed(1)}/s`;
+    }
+
+    function updateExportButtons() {
+      const hasRows = state.rows.length > 0;
+      els.excelBtn.disabled = !hasRows;
+      els.csvBtn.disabled = !hasRows;
+      els.clearBtn.disabled = !hasRows;
+    }
+
+    function updateTable() {
+      if (!els.tableHead.children.length) {
+        COLUMNS.forEach((name) => {
+          const th = document.createElement("th");
+          th.textContent = name;
+          els.tableHead.appendChild(th);
+        });
+      }
+      els.tableBody.textContent = "";
+      const fragment = document.createDocumentFragment();
+      state.rows.slice(-80).reverse().forEach((row) => {
+        const tr = document.createElement("tr");
+        COLUMNS.forEach((name) => {
+          const td = document.createElement("td");
+          const value = row[name];
+          td.textContent = typeof value === "number" && name.endsWith("V") ? value.toFixed(6) : value;
+          tr.appendChild(td);
+        });
+        fragment.appendChild(tr);
+      });
+      els.tableBody.appendChild(fragment);
+    }
+
+    function buildLegend() {
+      SENSOR_COLUMNS.forEach((name, index) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        const swatch = document.createElement("span");
+        const text = document.createElement("span");
+        input.type = "checkbox";
+        input.checked = true;
+        swatch.className = "swatch";
+        swatch.style.background = COLORS[index];
+        text.textContent = name;
+        input.addEventListener("change", () => {
+          state.visible[name] = input.checked;
+          drawChart();
+        });
+        label.append(input, swatch, text);
+        els.legend.appendChild(label);
+      });
+    }
+
+    function drawChart() {
+      const canvas = els.chart;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const width = Math.max(320, Math.floor(rect.width * dpr));
+      const height = Math.max(240, Math.floor(rect.height * dpr));
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, width, height);
+
+      const sourceRows = state.rows.length ? state.rows : state.previewRows;
+      const samples = sourceRows.slice(-700);
+      const visible = SENSOR_COLUMNS.filter((name) => state.visible[name]);
+      const pad = { left: 62 * dpr, right: 16 * dpr, top: 18 * dpr, bottom: 34 * dpr };
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+
+      ctx.font = `${12 * dpr}px Arial`;
+      ctx.fillStyle = "#667085";
+      ctx.strokeStyle = "#e5ebf2";
+      ctx.lineWidth = 1 * dpr;
+
+      if (!samples.length || !visible.length) {
+        ctx.textAlign = "center";
+        ctx.fillText("Connect, press Record, then collect live gas sensor data", width / 2, height / 2);
+        return;
+      }
+
+      const values = [];
+      samples.forEach((row) => visible.forEach((name) => values.push(row[name])));
+      let minY = Math.min(...values);
+      let maxY = Math.max(...values);
+      if (minY === maxY) {
+        minY -= 0.001;
+        maxY += 0.001;
+      }
+      const margin = (maxY - minY) * 0.08;
+      minY -= margin;
+      maxY += margin;
+
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      for (let i = 0; i <= 5; i++) {
+        const y = pad.top + plotH * (i / 5);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(width - pad.right, y);
+        ctx.stroke();
+        const label = maxY - (maxY - minY) * (i / 5);
+        ctx.fillText(label.toFixed(4), pad.left - 8 * dpr, y);
+      }
+
+      ctx.strokeStyle = "#b8c3d1";
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top);
+      ctx.lineTo(pad.left, pad.top + plotH);
+      ctx.lineTo(width - pad.right, pad.top + plotH);
+      ctx.stroke();
+
+      const minX = samples[0].elapsed_ms || 0;
+      const maxX = samples[samples.length - 1].elapsed_ms || minX + 1;
+      const rangeX = Math.max(1, maxX - minX);
+
+      ctx.fillStyle = "#667085";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      for (let i = 0; i <= 5; i++) {
+        const x = pad.left + plotW * (i / 5);
+        const elapsedMs = minX + rangeX * (i / 5);
+        ctx.strokeStyle = "#eef2f7";
+        ctx.beginPath();
+        ctx.moveTo(x, pad.top);
+        ctx.lineTo(x, pad.top + plotH);
+        ctx.stroke();
+        ctx.fillText(formatElapsed(elapsedMs), x, pad.top + plotH + 8 * dpr);
+      }
+
+      ctx.textAlign = "right";
+      ctx.fillText("elapsed time", width - pad.right, height - 14 * dpr);
+
+      visible.forEach((name) => {
+        ctx.strokeStyle = COLORS[SENSOR_COLUMNS.indexOf(name)];
+        ctx.lineWidth = 2 * dpr;
+        ctx.beginPath();
+        samples.forEach((row, index) => {
+          const x = pad.left + (((row.elapsed_ms || 0) - minX) / rangeX) * plotW;
+          const y = pad.top + (1 - (row[name] - minY) / (maxY - minY)) * plotH;
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      });
+    }
+
+    function formatElapsed(ms) {
+      const totalSeconds = Math.max(0, Math.round(ms / 1000));
+      if (totalSeconds < 60) return `${totalSeconds}s`;
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${minutes}:${seconds}`;
+    }
+
+    async function send(command) {
+      if (!state.writer) return;
+      await state.writer.write(new TextEncoder().encode(`${command}\n`));
+    }
+
+    async function connect() {
+      if (!("serial" in navigator)) {
+        log("Use Chrome or Edge from localhost. Web Serial is not available here.");
+        return;
+      }
+      state.port = await navigator.serial.requestPort();
+      await state.port.open({ baudRate: Number(els.baudRate.value) });
+      state.writer = state.port.writable.getWriter();
+      state.reading = true;
+      setStatus(true);
+      log("Connected. Press Record when clean-air baseline is ready.");
+      readLoop();
+    }
+
+    async function disconnect() {
+      state.recording = false;
+      state.reading = false;
+      try {
+        if (state.reader) {
+          await state.reader.cancel();
+        }
+      } catch (error) {
+        log(error.message);
+      }
+      try {
+        if (state.writer) {
+          state.writer.releaseLock();
+          state.writer = null;
+        }
+        if (state.port) {
+          await state.port.close();
+          state.port = null;
+        }
+      } catch (error) {
+        log(error.message);
+      }
+      setStatus(false);
+      log("Disconnected.");
+    }
+
+    async function readLoop() {
+      const decoder = new TextDecoder();
+      while (state.port && state.reading) {
+        state.reader = state.port.readable.getReader();
+        try {
+          while (state.reading) {
+            const { value, done } = await state.reader.read();
+            if (done) break;
+            state.buffer += decoder.decode(value, { stream: true });
+            const lines = state.buffer.split(/\r?\n/);
+            state.buffer = lines.pop() || "";
+            lines.forEach((line) => {
+              const trimmed = line.trim();
+              if (trimmed && (trimmed.startsWith("[ADC CH") || trimmed.includes("MQ") || trimmed.match(/^\d+,/))) {
+                els.lastLine.textContent = `Last sensor line: ${trimmed}`;
+              }
+              const row = parseSensorLine(line);
+              if (row && state.recording) {
+                addRow(row);
+                return;
+              }
+              const adcRow = parseAdcLine(line);
+              if (adcRow) {
+                if (state.recording) addRow(adcRow);
+                else addPreviewRow(adcRow);
+                return;
+              }
+              const preview = parseCalibrationLine(line);
+              if (preview) addPreviewRow(preview);
+            });
+          }
+        } catch (error) {
+          log(error.message);
+        } finally {
+          state.reader.releaseLock();
+          state.reader = null;
+        }
+      }
+    }
+
+    async function startRecording() {
+      state.recording = true;
+      if (!state.startedAt) state.startedAt = Date.now();
+      await send("LABEL=unlabeled");
+      await send("CSV_ON");
+      log("Recording raw live data. Keep the full experiment in one recording.");
+    }
+
+    async function stopRecording() {
+      state.recording = false;
+      await send("CSV_OFF");
+      log("Recording stopped. Export Excel for analysis.");
+    }
+
+    function exportCsv() {
+      const lines = [COLUMNS.join(",")];
+      state.rows.forEach((row) => lines.push(COLUMNS.map((name) => csvEscape(row[name])).join(",")));
+      download(`${els.boardName.value || "Board"}_raw_dataset.csv`, lines.join("\r\n"), "text/csv;charset=utf-8");
+    }
+
+    function exportExcel() {
+      const htmlRows = [
+        `<tr>${COLUMNS.map((name) => `<th>${name}</th>`).join("")}</tr>`,
+        ...state.rows.map((row) => `<tr>${COLUMNS.map((name) => `<td>${csvEscape(row[name])}</td>`).join("")}</tr>`)
+      ];
+      const workbook = `<!doctype html><html><head><meta charset="utf-8"></head><body><table>${htmlRows.join("")}</table></body></html>`;
+      download(`${els.boardName.value || "Board"}_raw_dataset.xls`, workbook, "application/vnd.ms-excel;charset=utf-8");
+    }
+
+    function clearRows() {
+      state.rows = [];
+      state.previewRows = [];
+      state.latestPreview = Object.fromEntries(SENSOR_COLUMNS.map((name) => [name, null]));
+      state.pendingAdc = {};
+      state.startedAt = 0;
+      state.rateStartedAt = 0;
+      state.rateRows = 0;
+      els.rowCount.textContent = "0";
+      els.rateValue.textContent = "0/s";
+      els.tableBody.textContent = "";
+      updateExportButtons();
+      drawChart();
+      log("Rows cleared.");
+    }
+
+    els.connectBtn.addEventListener("click", () => connect().catch((error) => log(error.message)));
+    els.disconnectBtn.addEventListener("click", () => disconnect().catch((error) => log(error.message)));
+    els.startBtn.addEventListener("click", () => startRecording().catch((error) => log(error.message)));
+    els.stopBtn.addEventListener("click", () => stopRecording().catch((error) => log(error.message)));
+    els.excelBtn.addEventListener("click", exportExcel);
+    els.csvBtn.addEventListener("click", exportCsv);
+    els.clearBtn.addEventListener("click", clearRows);
+    window.addEventListener("resize", drawChart);
+
+    buildLegend();
+    setStatus(false);
+    updateExportButtons();
+    updateTable();
+    drawChart();
+  </script>
+</body>
+</html>
